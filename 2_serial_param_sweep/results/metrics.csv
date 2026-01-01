@@ -1,0 +1,4 @@
+mailly,moulin,unmet_mailly,unmet_moulin,final_imbalance,run_id,steps,p1,p2,init_mailly,init_moulin,seed
+5,10,20,3,-5,0,1000.0,0.5,0.47,10.0,5.0,123.0
+12,3,0,114,9,1,1000.0,0.5,0.63,10.0,5.0,124.0
+3,12,123,0,-9,2,1000.0,0.6,0.47,10.0,5.0,125.0
