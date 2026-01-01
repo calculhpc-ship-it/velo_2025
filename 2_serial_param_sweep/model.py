@@ -3,23 +3,13 @@ from typing import Tuple, Dict
 import numpy as np
 import pandas as pd
 
-
 @dataclass
 class State:
-    """Represents the state of bikes at two stations.
-
-    Attributes:
-        mailly: Number of bikes at Mailly station
-        moulin: Number of bikes at Moulin station
-        unmet_mailly: Number of unmet requests at Mailly
-        unmet_moulin: Number of unmet requests at Moulin
-    """
-
+    """Represents the state of bikes at two stations."""
     mailly: int
     moulin: int
     unmet_mailly: int = 0
     unmet_moulin: int = 0
-
 
 def step(
     state: State,
@@ -28,25 +18,26 @@ def step(
     rng: np.random.Generator,
     metrics: Dict[str, int],
 ) -> State:
-    """Simulate one time step of the bike-sharing system.
+    """Simulate one time step of the bike-sharing system."""
+    # prob déplacement de Mailly-->Moulin
+    if rng.random() < p1:
+        if state.mailly > 0:
+            state.mailly -= 1
+            state.moulin += 1
+        else:
+            state.unmet_mailly += 1
+    # prob déplacement velo Moulin-->Mailly
+    if rng.random() < p2:
+        if state.moulin > 0:
+            state.moulin -= 1
+            state.mailly += 1
+        else:
+            state.unmet_moulin += 1
+    # Mettre à jour les metrics
+    metrics['unmet_mailly'] = state.unmet_mailly
+    metrics['unmet_moulin'] = state.unmet_moulin
 
-    Args:
-        state: Current state of the system (bike counts at each station)
-        p1: Probability of a user wanting to go from Mailly to Moulin
-        p2: Probability of a user wanting to go from Moulin to Mailly
-        rng: Random number generator for stochastic events
-        metrics: Dictionary to track simulation metrics (unmet demand, etc.)
-
-    Returns:
-        Updated state after one simulation step
-
-    Note:
-        - If a station has no bikes available, increment the appropriate unmet demand counter
-        - Update the state by moving bikes between stations based on probabilities
-    """
-    # TODO: Implement the step logic
-    pass
-
+    return state
 
 def run_simulation(
     initial_mailly: int,
@@ -55,30 +46,43 @@ def run_simulation(
     p1: float,
     p2: float,
     seed: int,
-) -> Dict[str, list]:
-    """Run a complete bike-sharing simulation.
+) -> Tuple[pd.DataFrame, Dict[str, int]]:
+    """Run a complete bike-sharing simulation."""
+    initial_mailly = int(initial_mailly)
+    initial_moulin = int(initial_moulin)
+    steps = int(steps)
+    p1 = float(p1)
+    p2 = float(p2)
+    seed = int(seed)
 
-    Args:
-        initial_mailly: Initial number of bikes at Mailly station
-        initial_moulin: Initial number of bikes at Moulin station
-        steps: Number of simulation steps to run
-        p1: Probability of movement from Mailly to Moulin
-        p2: Probability of movement from Moulin to Mailly
-        seed: Random seed for reproducibility
+    rng = np.random.default_rng(seed)
 
-    Returns:
-        - Dictionary indexed by step with metrics including:
-            - 'mailly': Number of bikes at Mailly station
-            - 'moulin': Number of bikes at Moulin station
-            - 'unmet_mailly': Number of unmet requests at Mailly
-            - 'unmet_moulin': Number of unmet requests at Moulin
-            - 'final_imbalance': Final difference between station bike counts
+    # Initialisation 
+    state = State(mailly=initial_mailly, moulin=initial_moulin)
+    metrics = {
+        'mailly': initial_mailly,
+        'moulin': initial_moulin,
+        'unmet_mailly': 0,
+        'unmet_moulin': 0}
+    
+    time_series_data = {
+        'time': [0],
+        'mailly': [initial_mailly],
+        'moulin': [initial_moulin]}
+    # Boucle de simulation
+    for t in range(1, steps + 1):
+        metrics['mailly'] = state.mailly
+        metrics['moulin'] = state.moulin
 
-    Note:
-        - Create the state object with initial bike counts
-        - Initialize metrics dictionary with appropriate counters
-        - Record state at each time step for the DataFrame
-        - Calculate final_imbalance for each step as mailly - moulin
-    """
-    # TODO: Implement the simulation loop
-    pass
+        state = step(state, p1, p2, rng, metrics)
+        # sauvegarder des données 
+        time_series_data['time'].append(t)
+        time_series_data['mailly'].append(state.mailly)
+        time_series_data['moulin'].append(state.moulin)
+
+    metrics['final_imbalance'] = state.mailly - state.moulin
+    df = pd.DataFrame(time_series_data)
+    metrics['unmet_mailly'] = state.unmet_mailly
+    metrics['unmet_moulin'] = state.unmet_moulin
+
+    return df, metrics
